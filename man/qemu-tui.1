@@ -1,0 +1,663 @@
+.TH QEMU-TUI 1 "November 2026" "qemu-tui 0.1.0" "User Commands"
+.SH NAME
+qemu-tui \- keyboard-driven terminal interface for managing QEMU virtual machines
+.SH SYNOPSIS
+.B qemu-tui
+.RB [ \-\-console ]
+.RB [ \-\-vm\-dir
+.IR DIR ]
+.br
+.B qemu-tui
+.I command
+.RI [ argument " ...]"
+.br
+.B qemu-tui
+.B \-\-version
+.SH DESCRIPTION
+.B qemu-tui
+is a lightweight frontend for QEMU written in Go.
+It creates and manages virtual machines stored in a per-user directory,
+generates the QEMU command line, starts QEMU directly and controls the running
+process through the QEMU Machine Protocol (QMP).
+It is not a replacement for QEMU or libvirt and needs no daemon or background service.
+Virtual machines keep running when
+.B qemu-tui
+exits.
+.PP
+Without arguments the full-screen terminal interface is started.
+With a
+.I command
+argument, one console command (see
+.BR "CONSOLE COMMANDS" )
+is executed and the program exits, which is convenient for scripts.
+.SH OPTIONS
+.TP
+.B \-\-console
+Open the interface directly in the global command console.
+.TP
+.BI \-\-vm\-dir " DIR"
+Use
+.I DIR
+as the virtual machine directory for this run instead of the one from the configuration file.
+.TP
+.B \-\-version
+Print the version and exit.
+.TP
+.BR \-h ", " \-\-help
+Print a usage summary and exit.
+.SH THE INTERFACE
+.SS Main screen
+The main screen lists all virtual machines with their state
+(Running, Paused or Stopped), CPU and memory allocation, disk size, network mode and uptime.
+Columns are dropped automatically on narrow terminals, and all text is re-wrapped when the
+terminal is resized.
+.TP
+.BR "Up" ", " "Down" ", " j ", " k
+Move the selection.
+.TP
+.B Enter
+Open the menu of the selected virtual machine.
+.TP
+.B /
+Search virtual machines by name.
+.B Enter
+keeps the filter,
+.B Esc
+clears it.
+.TP
+.B Ctrl+N
+Create a new virtual machine (wizard).
+.TP
+.BR : " or " Ctrl+G
+Open the global console.
+.TP
+.B t
+Open the resource monitor.
+.TP
+.BR s " or " e
+Open the application settings.
+.TP
+.B Ctrl+R
+Refresh the states (they also refresh every two seconds).
+.TP
+.BR Ctrl+Q " or " Ctrl+C
+Quit.
+Running virtual machines are not affected.
+.PP
+The bindings for
+.BR quit ,
+.BR new ,
+.BR refresh ,
+.BR console ,
+.B search
+and
+.B top
+can be changed with the
+.B keybindings
+option of the global configuration.
+.SS Virtual machine menu
+.TP
+.B Start
+Build the QEMU command, launch QEMU, and open the per-VM console showing the log.
+.TP
+.B Stop
+Send an ACPI power-down request (graceful shutdown).
+.TP
+.B Force Stop
+Tell QEMU to quit immediately.
+If QEMU does not answer, the process is killed, but only after verifying that it is the
+process started for this virtual machine.
+.TP
+.B Restart
+Reset the guest.
+.TP
+.BR Pause ", " Resume
+Freeze or continue the guest.
+.TP
+.B Settings
+Open the settings screen of the virtual machine.
+.TP
+.B Console
+Open the per-VM console.
+.TP
+.B Logs
+Scrollable log viewer.
+.B r
+reloads.
+.TP
+.B Snapshots
+List snapshots.
+.B n
+creates one,
+.BR Enter " or " r
+restores the selected one,
+.B d
+deletes it.
+.TP
+.B Attach Media
+Ask for an ISO name or path.
+An empty answer ejects the medium.
+.TP
+.B Clone
+Copy a stopped virtual machine (disks, firmware variables, snapshots) under a new name.
+The clone gets a new MAC address.
+.TP
+.B Delete
+Remove a stopped virtual machine and all its files.
+The name of the machine must be typed to confirm.
+.SS Creation wizard
+Started with
+.B Ctrl+N
+or with
+.B :create
+without arguments.
+The steps are: name, architecture
+.RB ( x86_64 ,
+.BR aarch64 ,
+.BR i386 ,
+.BR riscv64 ),
+RAM in MiB, CPU cores, disk size, disk format
+.RB ( qcow2
+or
+.BR raw ),
+firmware
+.RB ( bios
+or
+.BR uefi ),
+network
+.RB ( user ,
+.B tap
+or
+.BR none ),
+TAP interface (only for
+.BR tap ),
+display
+.RB ( gtk ,
+.BR sdl ,
+.BR vnc ,
+.BR spice )
+and an optional ISO.
+.B Enter
+continues,
+.B Shift+Tab
+goes back,
+the arrow keys change a choice and
+.B Esc
+cancels.
+Every answer is validated.
+.SS Settings screens
+Everyday changes do not require editing files.
+Use
+.B Up
+and
+.B Down
+to move,
+.B Left
+and
+.B Right
+to change choices and toggles (saved immediately), and
+.B Enter
+to edit text and number fields.
+Invalid values are rejected with an error message and are not saved.
+.PP
+Settings of a virtual machine: memory, CPU cores, display, boot device, firmware, network mode,
+TAP interface, disk bus
+.RB ( virtio
+or
+.BR ide ,
+the latter for legacy guests), serial console, MAC address and ISO.
+They apply at the next start, except the ISO, which is changed live.
+.PP
+Application settings: default display, theme
+.RB ( dark
+or
+.BR light ),
+ISO folder and the editor command.
+The last row of both screens opens the raw JSON file in an editor, for advanced changes.
+.SH CONSOLE COMMANDS
+The global console is opened with
+.BR : " or " Ctrl+G .
+A per-VM console is opened from the virtual machine menu.
+In a per-VM console the
+.I vm
+argument is implied, so
+.B :snapshot clean-install
+snapshots that machine.
+Keys:
+.B Enter
+runs,
+.B Tab
+completes,
+.B Up
+and
+.B Down
+browse the history (kept in the
+.I history
+file),
+.B PgUp
+and
+.B PgDn
+scroll,
+.B Esc
+closes.
+.PP
+Arguments are split using simple quoting rules
+(double quotes, single quotes and backslash) but are never passed to a shell.
+A leading colon is optional.
+.TP
+.B help
+List the commands.
+.TP
+.BR list " [" snapshots ]
+List virtual machines, or the snapshots of a machine.
+.TP
+.BR start " \fIvm\fR"
+Start a virtual machine.
+.TP
+.BR stop " \fIvm\fR"
+Request an ACPI power-down.
+.TP
+.BR restart " \fIvm\fR"
+Reset the guest.
+.TP
+.BR kill " \fIvm\fR"
+Force stop.
+.TP
+.BR pause " \fIvm\fR, " resume " \fIvm\fR"
+Freeze or continue the guest.
+.TP
+.BR status " [\fIvm\fR]"
+Without argument, the same as
+.BR list .
+With a machine: state, PID, runtime, CPU, memory, disk I/O and network information.
+.TP
+.B top
+Open the resource monitor.
+.TP
+.BR create " \fIname\fR [\fIkey\fR=\fIvalue\fR ...]"
+Create a virtual machine.
+Without arguments the wizard opens.
+Keys:
+.BR mem " (" memory ", " ram "),"
+.BR cpus " (" cpu "),"
+.BR arch ,
+.B disk
+(size),
+.BR fmt " (" format "),"
+.BR fw " (" firmware "),"
+.BR net " (" network "),"
+.BR tap ,
+.BR display ,
+.B iso
+and
+.BR boot .
+.TP
+.BR delete " \fIvm\fR"
+Delete a stopped virtual machine and its files.
+.TP
+.BR clone " \fIvm\fR \fInew\fR"
+Clone a stopped virtual machine.
+.TP
+.BR snapshot " \fIvm\fR \fIname\fR"
+Create an internal qcow2 snapshot of the main disk.
+The machine must be stopped.
+.TP
+.BR restore " \fIvm\fR \fIname\fR"
+Restore a snapshot.
+The machine must be stopped.
+.TP
+.BR snapshots " \fIvm\fR"
+List snapshots with their creation dates.
+.TP
+.BR logs " [\fIvm\fR]"
+Show recent log lines of a machine, or the global event log.
+.TP
+.BR usb " attach|remove \fIvm\fR \fIvvvv\fR:\fIpppp\fR"
+Attach or detach a host USB device by vendor and product id (see
+.BR lsusb (8)).
+A running machine is changed live.
+.TP
+.BR disk " info \fIvm\fR"
+Show format, virtual size, size on disk and snapshot count of each disk.
+.TP
+.BR disk " resize \fIvm\fR \fIsize\fR"
+Grow the main disk, for example
+.B 40G
+or
+.BR +10G .
+Shrinking is not supported.
+The machine must be stopped.
+.TP
+.BR disk " create \fIvm\fR \fIfile\fR \fIsize\fR [qcow2|raw]"
+Create an extra disk in the machine's
+.I disks
+directory and attach it.
+.TP
+.BR disk " attach|detach \fIvm\fR \fIfile\fR"
+Attach an existing file from the
+.I disks
+directory, or detach it (the file is kept).
+.TP
+.BR iso " list"
+List the ISO files of the ISO folder.
+.TP
+.BR iso " attach \fIvm\fR \fIfile\fR"
+Insert an ISO.
+A relative name is searched in the ISO folder, then in the machine directory.
+Works on running machines.
+.TP
+.BR iso " eject \fIvm\fR"
+Remove the medium.
+.TP
+.BR boot " \fIvm\fR disk|cdrom|network"
+Select the boot device for the next start.
+The order is disk, CD, network for
+.BR disk ;
+CD, disk, network for
+.BR cdrom ;
+and network, CD, disk for
+.BR network .
+The boot menu is applied on x86 guests; other architectures follow the order of their firmware.
+.TP
+.BR monitor " \fIvm\fR \fIcommand\fR"
+Run a QEMU monitor command through QMP, for example
+.BR "info status" ,
+.B info block
+or
+.BR "info network" .
+.TP
+.BR serial " [\fIvm\fR]"
+Print the path of the serial console socket and a command to connect to it
+(see
+.BR socat (1)).
+The serial port must be enabled in the settings of the machine.
+.TP
+.B clear
+Clear the console screen (interface only).
+.TP
+.BR exit ", " quit
+Leave the console.
+.SH RESOURCE MONITOR
+Opened with
+.B t
+or
+.BR :top .
+It refreshes every second and shows, for each running virtual machine, CPU load (relative to
+its core count), resident memory compared to the configured memory, and disk read and write rates.
+Disk rates are available on Linux only.
+On other systems CPU and memory come from
+.BR ps (1)
+and CPU is a decayed average.
+.SH VIRTUAL MACHINE CONFIGURATION
+Each machine has a
+.I config.json
+file.
+Only
+.B name
+is required, everything else has a default.
+.TP
+.B name
+Machine name.
+Letters, digits and
+.BR . ,
+.B _
+and
+.BR \- ;
+at most 63 characters; must match the directory name.
+.TP
+.B memory
+RAM in MiB (default 2048).
+.TP
+.B cpus
+Number of virtual CPUs (default 2).
+.TP
+.B architecture
+.BR x86_64 " (default), " aarch64 ", " i386 " or " riscv64 .
+.TP
+.BR disk ", " disk_format ", " disk_size ", " disk_bus
+Main disk file name inside
+.IR disks/ ,
+its format
+.RB ( qcow2
+or
+.BR raw ),
+the requested size, and the bus
+.RB ( virtio
+or, on x86,
+.BR ide ).
+.TP
+.B extra_disks
+List of additional disk file names inside
+.IR disks/ .
+.TP
+.B iso
+ISO file name or absolute path.
+.TP
+.B firmware
+.B bios
+(x86 only) or
+.BR uefi .
+Non-x86 guests always use UEFI.
+Each machine has its own variable store in
+.IR firmware/vars.fd .
+.TP
+.BR network ", " network_mode ", " tap_iface ", " mac
+.B network
+is a boolean shortcut;
+.B network_mode
+is
+.BR user ,
+.B tap
+or
+.B none
+and takes precedence.
+.B tap_iface
+names an existing host tap interface.
+.B mac
+defaults to a generated
+.B 52:54:00:xx:xx:xx
+address.
+.TP
+.B display
+.BR gtk ", " sdl ", " vnc " or " spice .
+.B vnc
+listens on 127.0.0.1 starting at port 5900;
+.B spice
+on 127.0.0.1 starting at port 5930.
+Both are unauthenticated and local only.
+.TP
+.B boot
+.BR disk " (default), " cdrom " or " network .
+.TP
+.B serial
+Boolean; enable a serial port reachable through a Unix socket.
+.TP
+.B usb
+List of
+.I vvvv:pppp
+host USB device ids.
+.SH GLOBAL CONFIGURATION
+The file
+.I config.json
+in the configuration directory may contain:
+.TP
+.B default_display
+Display backend for new machines.
+.TP
+.BR vm_dir ", " log_dir ", " iso_dir
+Folders for virtual machines, logs and ISO files.
+A leading
+.B ~/
+is expanded.
+.TP
+.B theme
+.B dark
+or
+.BR light .
+.TP
+.B colors
+Object overriding the keys
+.BR accent ,
+.BR dim ,
+.BR ok ,
+.BR warn ,
+.B err
+and
+.BR text .
+Values are ANSI colour numbers or
+.BR #rrggbb .
+.TP
+.B keybindings
+Object remapping
+.BR quit ,
+.BR new ,
+.BR refresh ,
+.BR console ,
+.B search
+and
+.BR top .
+.TP
+.B editor
+Command used by the "Edit raw config file" rows.
+Defaults to the first of micro, nano, ee and pico found in
+.BR PATH ,
+then
+.B $VISUAL
+or
+.BR $EDITOR ,
+then
+.BR vi .
+.PP
+Missing keys fall back to their defaults.
+.SH FILES
+.TP
+.I ~/.config/qemu-tui/config.json
+Global configuration.
+.TP
+.I ~/.local/share/qemu-tui/vms/NAME/
+Directory of one machine, containing
+.IR config.json ,
+.IR disks/ ,
+.IR firmware/ ,
+.IR snapshots/ ,
+.I logs/
+and, while the machine runs,
+.IR runtime.json .
+.TP
+.I ~/.local/share/qemu-tui/vms/NAME/logs/qemu.log
+QEMU output and timestamped events of one machine.
+.TP
+.I ~/.local/share/qemu-tui/logs/events.log
+Events of all machines: start, stop, exit status, clean-ups.
+.TP
+.I ~/.local/share/qemu-tui/isos/
+Default ISO folder.
+.TP
+.I ~/.local/share/qemu-tui/history
+Console command history (last 500 commands).
+.TP
+.I $XDG_RUNTIME_DIR/qemu-tui/
+QMP and serial sockets (directory mode 0700).
+Without
+.B XDG_RUNTIME_DIR
+.IR /tmp/qemu-tui-UID/ " is used."
+.SH ENVIRONMENT
+.TP
+.B XDG_CONFIG_HOME
+Replaces
+.I ~/.config
+.TP
+.B XDG_DATA_HOME
+Replaces
+.I ~/.local/share
+.TP
+.B XDG_RUNTIME_DIR
+Location of the socket directory.
+.TP
+.BR VISUAL ", " EDITOR
+Fallback editor, see
+.BR editor .
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+An error occurred; the message is written to standard error.
+.TP
+.B 2
+Invalid command line options.
+.SH EXAMPLES
+Start the interface:
+.PP
+.RS
+.nf
+qemu-tui
+.fi
+.RE
+.PP
+Create a UEFI machine with an installer ISO from the ISO folder, then start it:
+.PP
+.RS
+.nf
+qemu-tui create debian mem=4096 cpus=4 disk=40G fw=uefi iso=debian.iso
+qemu-tui start debian
+.fi
+.RE
+.PP
+Take and restore a snapshot:
+.PP
+.RS
+.nf
+qemu-tui stop debian
+qemu-tui snapshot debian clean-install
+qemu-tui restore debian clean-install
+.fi
+.RE
+.PP
+Query a running guest through the monitor:
+.PP
+.RS
+.nf
+qemu-tui monitor debian "info status"
+.fi
+.RE
+.SH SECURITY
+QEMU is started with an argument vector, never through a shell, and no value from a
+configuration file is interpreted by a shell.
+Machine names must consist of letters, digits and
+.BR . ,
+.BR _ ,
+.BR \- ;
+disk and ISO names must be plain file names; paths are joined so that they cannot leave their
+directory; commas in paths are escaped for QEMU.
+.PP
+A process id is signalled only after checking that the command line of that process contains the
+private QMP socket of the machine, so a recycled process id or a foreign process is never
+killed.
+Stale runtime state is removed automatically, and starting a machine twice is refused.
+.SH NOTES
+Accelerator selection is automatic: KVM on Linux when
+.I /dev/kvm
+is usable, HVF on macOS, WHPX on Windows, otherwise TCG software emulation.
+Guests of a foreign architecture, and all guests on FreeBSD, run with TCG and are slower.
+.PP
+Platforms: Linux and FreeBSD are the primary targets; macOS is expected to work;
+Windows support is experimental.
+.SH BUGS
+Snapshots are internal qcow2 snapshots of the main disk and need the machine stopped.
+Adding, removing and growing disks also need the machine stopped.
+The network card model is fixed to virtio.
+There are no network byte counters.
+Disk I/O rates exist on Linux only.
+The per-VM console shows the QEMU log and accepts qemu-tui commands; it is not a terminal into the
+guest (use the QEMU window, VNC, SPICE or the serial console).
+.SH SEE ALSO
+.BR qemu-system-x86_64 (1),
+.BR qemu-img (1),
+.BR socat (1),
+.BR lsusb (8)
+.PP
+Project documentation: the README file shipped with the source.
+.SH AUTHORS
+AMC-official

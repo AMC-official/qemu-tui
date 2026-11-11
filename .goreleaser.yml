@@ -1,0 +1,91 @@
+version: 2
+
+project_name: qemu-tui
+
+builds:
+  - id: qemu-tui
+    main: ./cmd/qemu-tui
+    binary: qemu-tui
+
+    # This project is pure Go. Disabling cgo makes cross-compilation simpler
+    # and avoids requiring a separate C toolchain for every target.
+    env:
+      - CGO_ENABLED=0
+
+    goos:
+      - linux
+      - windows
+      - darwin
+      - freebsd
+      - openbsd
+      - netbsd
+      - dragonfly
+
+    goarch:
+      - amd64
+      - 386
+      - arm64
+      - riscv64
+
+    # Not every GOOS supports every GOARCH. These exclusions leave the valid
+    # targets for the requested operating systems and architectures.
+    ignore:
+      # macOS: amd64 and arm64 only.
+      - goos: darwin
+        goarch: 386
+      - goos: darwin
+        goarch: riscv64
+
+      # Windows: 386, amd64 and arm64 only.
+      - goos: windows
+        goarch: riscv64
+
+      # FreeBSD/riscv64 is currently marked as a broken Go port.
+      - goos: freebsd
+        goarch: riscv64
+
+      # NetBSD: 386, amd64 and arm64 only.
+      - goos: netbsd
+        goarch: riscv64
+
+      # DragonFly BSD: amd64 only.
+      - goos: dragonfly
+        goarch: 386
+      - goos: dragonfly
+        goarch: arm64
+      - goos: dragonfly
+        goarch: riscv64
+
+    # Build portable x86-64 and baseline RISC-V binaries.
+    goamd64: v1
+    goriscv64: rva20u64
+
+    flags:
+      - -trimpath
+
+    ldflags:
+      - -s -w
+
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: qemu-tui-archive
+    # Unix-like platforms get tar.gz; Windows gets zip.
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+    # GoReleaser automatically includes common files such as README and LICENSE.
+    files:
+      - LICENSE*
+      - README*
+
+checksum:
+  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  algorithm: sha256
+
+changelog:
+  sort: asc
