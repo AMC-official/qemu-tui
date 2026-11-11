@@ -57,10 +57,8 @@ builds:
         goarch: riscv64
 
     # Build portable x86-64 and baseline RISC-V binaries.
-    goamd64:
-      - v1
-    goriscv64:
-      - rva20u64
+    goamd64: [v1]
+    goriscv64: [rva20u64]
 
     flags:
       - -trimpath
