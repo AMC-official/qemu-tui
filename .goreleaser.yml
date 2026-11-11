@@ -26,27 +26,36 @@ builds:
       - riscv64
 
     ignore:
+      # Unsupported or unavailable combinations
       - goos: darwin
         goarch: 386
+
       - goos: darwin
         goarch: riscv64
+
       - goos: windows
         goarch: riscv64
+
       - goos: freebsd
         goarch: riscv64
+
+      - goos: openbsd
+        goarch: riscv64
+
       - goos: netbsd
         goarch: riscv64
+
       - goos: dragonfly
         goarch: 386
+
       - goos: dragonfly
         goarch: arm64
+
       - goos: dragonfly
         goarch: riscv64
 
     goamd64:
       - v1
-    goriscv64:
-      - rva20u64
 
     flags:
       - -trimpath
@@ -54,21 +63,26 @@ builds:
     ldflags:
       - -s -w
 
-    mod_timestamp: '{{ .CommitTimestamp }}'
+    mod_timestamp: "{{ .CommitTimestamp }}"
 
 archives:
   - id: qemu-tui-archive
-    format: tar.gz
+    formats:
+      - tar.gz
+
     format_overrides:
       - goos: windows
-        format: zip
-    name_template: '{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}'
+        formats:
+          - zip
+
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
     files:
       - LICENSE*
       - README*
 
 checksum:
-  name_template: '{{ .ProjectName }}_{{ .Version }}_checksums.txt'
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
   algorithm: sha256
 
 changelog:
