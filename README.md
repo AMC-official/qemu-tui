@@ -13,6 +13,8 @@ directly, and then controls it over QMP (the QEMU Machine Protocol).
 
 > The terminal is not a limitation. The terminal is the interface.
 
+> and another thing, AI is also **partially** used for debugging purposes
+
 ---
 
 ## Table of contents
